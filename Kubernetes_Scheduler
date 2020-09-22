@@ -1,0 +1,245 @@
+-->Kubernetes Scheduler<---
+
+##Label your node as being located in availability zone 1:##
+kubectl label node chadcrowell1c.mylabserver.com availability-zone=zone1
+
+##Label your node as dedicated infrastructure:##
+kubectl label node chadcrowell2c.mylabserver.com share-type=dedicated
+
+##Here is the YAML for the deployment to include the node affinity rules:##
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: pref
+spec:
+  replicas: 5
+  template:
+    metadata:
+      labels:
+        app: pref
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 80
+            preference:
+              matchExpressions:
+              - key: availability-zone
+                operator: In
+                values:
+                - zone1
+          - weight: 20
+            preference:
+              matchExpressions:
+              - key: share-type
+                operator: In
+                values:
+                - dedicated
+      containers:
+      - args:
+        - sleep
+        - "99999"
+        image: busybox
+        name: main
+
+##Create the deployment:##
+kubectl create -f pref-deployment.yaml
+
+##View the deployment:##
+kubectl get deployments
+
+##View which pods landed on which nodes:##
+kubectl get pods -o wide
+
+##ClusterRole.yaml##
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: csinodes-admin
+rules:
+- apiGroups: ["storage.k8s.io"]
+  resources: ["csinodes"]
+  verbs: ["get", "watch", "list"]
+
+##ClusterRoleBinding.yaml##
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: read-csinodes-global
+subjects:
+- kind: ServiceAccount
+  name: my-scheduler
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csinodes-admin
+  apiGroup: rbac.authorization.k8s.io
+
+##Role.yaml##
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: system:serviceaccount:kube-system:my-scheduler
+  namespace: kube-system
+rules:
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - csinodes
+  verbs:
+  - get
+  - list
+  - watch
+
+##RoleBinding.yaml##
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-csinodes
+  namespace: kube-system
+subjects:
+- kind: User
+  name: kubernetes-admin
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role 
+  name: system:serviceaccount:kube-system:my-scheduler
+  apiGroup: rbac.authorization.k8s.io
+
+kubectl edit clusterrole system:kube-scheduler
+
+##Run the deployment for my-scheduler:##
+kubectl create -f my-scheduler.yaml
+
+##View your new scheduler in the kube-system namespace:##
+kubectl get pods -n kube-system
+
+##pod1.yaml##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-annotation
+  labels:
+    name: multischeduler-example
+spec:
+  containers:
+  - name: pod-with-no-annotation-container
+    image: k8s.gcr.io/pause:2.0
+
+##pod2.yaml##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: annotation-default-scheduler
+  labels:
+    name: multischeduler-example
+spec:
+  schedulerName: default-scheduler
+  containers:
+  - name: pod-with-default-annotation-container
+    image: k8s.gcr.io/pause:2.0
+
+##pod3.yaml##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: annotation-second-scheduler
+  labels:
+    name: multischeduler-example
+spec:
+  schedulerName: my-scheduler
+  containers:
+  - name: pod-with-second-annotation-container
+    image: k8s.gcr.io/pause:2.0
+
+##The pod YAML for a pod with requests:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-pod1
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: "chadcrowell3c.mylabserver.com"
+  containers:
+  - image: busybox
+    command: ["dd", "if=/dev/zero", "of=/dev/null"]
+    name: pod1
+    resources:
+      requests:
+        cpu: 800m
+        memory: 20Mi
+
+##The YAML for a pod that has limits:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: limited-pod
+spec:
+  containers:
+  - image: busybox
+    command: ["dd", "if=/dev/zero", "of=/dev/null"]
+    name: main
+    resources:
+      limits:
+        cpu: 1
+        memory: 20Mi
+
+##Use the exec utility to use the top command:##
+kubectl exec -it limited-pod top
+
+##Give the node a label to signify it has SSD:##
+kubectl label node[node_name] disk=ssd
+
+##The YAML for a DaemonSet:##
+apiVersion: apps/v1beta2
+kind: DaemonSet
+metadata:
+  name: ssd-monitor
+spec:
+  selector:
+    matchLabels:
+      app: ssd-monitor
+  template:
+    metadata:
+      labels:
+        app: ssd-monitor
+    spec:
+      nodeSelector:
+        disk: ssd
+      containers:
+      - name: main
+        image: linuxacademycontent/ssd-monitor
+
+##Label another node to specify it has SSD:##
+kubectl label node chadcrowell2c.mylabserver.com disk=ssd
+
+##Remove the label from a node and watch the DaemonSet pod terminate:##
+kubectl label node chadcrowell3c.mylabserver.com disk-
+
+##Change the label on a node to change it to spinning disk:##
+kubectl label node chadcrowell2c.mylabserver.com disk=hdd --overwrite
+
+##Pick the label to choose for your DaemonSet:##
+kubectl get nodes chadcrowell3c.mylabserver.com --show-labels
+
+##View the events in your default namespace:##
+kubectl get events
+
+##View the events in your kube-system namespace:##
+kubectl get events -n kube-system
+
+##Delete all the pods in your default namespace:##
+kubectl delete pods --all
+
+##Watch events as they are appearing in real time:##
+kubectl get events -w
+
+##View the logs from the scheduler pod:##
+kubectl logs [kube_scheduler_pod_name] -n kube-system
+
+##The location of a systemd service scheduler pod:##
+/var/log/kube-scheduler.log
+
+##taint the node:##
+kubectl taint node <node_name> node-type=prod:NoSchedule
