@@ -1,0 +1,46 @@
+-->core concepts<---
+
+##List all the nodes in cluster##
+kubectl get nodes
+
+##List pods in all namespaces##
+kubectl get pods --all-namespaces
+
+##List all the pods in the cluster in detail##
+kubectl get pods --all-namespaces -o wide
+
+##show all namespaces names##
+kubectl get namespaces
+
+##All details about pod nginx##
+kubectl describe pod nginx
+
+##Delete the pod nginx##
+kubectl delete pod nginx
+
+##Create deployment from yaml file##
+kubectl create -f nginx.yaml
+
+##Get the full yaml back##
+kubectl get deployment ngnix-deployment -o yaml
+
+##show all pod labels##
+kubectl get pods --show-labels
+
+##Apply a label to a pod##
+kubectl label pods <pod name> env=pod
+
+##See specific label##
+kubectl get pods -L env
+
+##Annotate a deployment
+kubectl annotate deployment nginx-deployment mycompany.com/someannotation="chad"
+
+##Use field selectors##
+kubectl get pods --field-selector status.phase=Running
+
+##Access app over node-port##
+curl localhost:30080
+
+##Execute a command from a pod##
+kubectl exec busybox --curl 10.244.2.9
