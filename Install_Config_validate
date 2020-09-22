@@ -1,0 +1,114 @@
+-->Install, Config and validate<---
+
+##View address of master and services##
+kubectl cluster -info 
+
+##show kubeconfig settings##
+kubectl config View
+
+##view all resource##
+kubectl api-resources -o wide
+
+##Get the Docker gpg key:##
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+##Add the Docker repository:##
+sudo add-apt-repository    "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+
+##Get the Kubernetes gpg key:##
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+##Add the Kubernetes repository:##
+cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
+
+##Update your packages:##
+sudo apt-get update
+
+##Install Docker, kubelet, kubeadm, and kubectl:##
+sudo apt-get install -y docker-ce=18.06.1~ce~3-0~ubuntu kubelet=1.13.5-00 kubeadm=1.13.5-00 kubectl=1.13.5-00
+
+##Hold them at the current version:##
+sudo apt-mark hold docker-ce kubelet kubeadm kubectl
+
+##Add the iptables rule to sysctl.conf:##
+echo "net.bridge.bridge-nf-call-iptables=1" | sudo tee -a /etc/sysctl.conf
+
+##Enable iptables immediately:##
+sudo sysctl -p
+
+##Initialize the cluster (run only on the master):##
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+##Set up local kubeconfig(run only on the master):##
+mkdir -p $HOME/.kube
+
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+##Apply Flannel CNI network overlay(run only on the master):##
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+##Join the worker nodes to the cluster(run only on the worker):##
+sudo kubeadm join [your unique string from the kubeadm init command]
+
+##Verify the worker nodes have joined the cluster successfully:##
+kubectl get nodes
+
+##View the default namespaces##
+kubectl get pods -o custom-columns=POD:metadata.name,NODE:spec.nodeName --sort-by spec.nodeName -n kube-system
+
+##View the kube-schedular endpoint##
+kubectl get endpoints kube-schedular -n kube-system -o yaml
+
+##Initialize the cluster with stacked etcd##
+sudo kubectl init --config=kubeadm-config.yaml
+
+##watch the pod came up##
+kubectl get pod -n kube-system -w 
+
+##view the kube config##
+cat .kube/config | more
+
+##view the service account token##
+kubectl get secrets
+
+##create a new namespaces##
+kubectl create ns my-ns
+
+##Run kube-proxy pod##
+kubectl run test --image=chadmcrowell/kubectl-proxy -n my-ns 
+
+##Open a shell from with in the pod##
+kubectl exec -it <name-of-pod> -n my-ns shell
+
+##List services in that nnamespace##
+curl localhost:8001/api/v1/namespaces/my-ns/services
+
+##List all available service accounts##
+kubectl get serviceaccounts
+
+##Run a simple nginx deployments##
+kubectl run nginx --image=nginx
+
+##Forword port 80 to 8081 on pod
+kubectl port-forward nginx 8081:80
+
+##Get respose from nginx##
+curl --head http://127.0.0.1:8081
+
+##Get the pod's logs##
+kubectl logs nginx
+
+##Create a service by exposing port 80 of the nginx deployment:##
+kubectl expose deployment nginx --port 80 --type NodePort
+
+##Run a command on nginx pod##
+kubectl exec -it nginx --nginx -v1
+
+##Get response from the service##
+curl -I localhost:<node port>
