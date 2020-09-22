@@ -1,0 +1,272 @@
+-->Application Lifecycle<---
+
+##The YAML for a deployment:##
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubeserve
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kubeserve
+  template:
+    metadata:
+      name: kubeserve
+      labels:
+        app: kubeserve
+    spec:
+      containers:
+      - image: linuxacademycontent/kubeserve:v1
+        name: app
+
+##Create a deployment with a record (for rollbacks):##
+kubectl create -f kubeserve-deployment.yaml --record
+
+##Check the status of the rollout:##
+kubectl rollout status deployments kubeserve
+
+##View the ReplicaSets in your cluster:##
+kubectl get replicasets
+
+##Scale up your deployment by adding more replicas:##
+kubectl scale deployment kubeserve --replicas=5
+
+##Expose the deployment and provide it a service:##
+kubectl expose deployment kubeserve --port 80 --target-port 80 --type NodePort
+
+##Set the minReadySeconds attribute to your deployment:##
+kubectl patch deployment kubeserve -p '{"spec": {"minReadySeconds": 10}}'
+
+##Use kubectl apply to update a deployment:##
+kubectl apply -f kubeserve-deployment.yaml
+
+##Use kubectl replace to replace an existing deployment:##
+kubectl replace -f kubeserve-deployment.yaml
+
+##Run this curl look while the update happens:##
+while true; do curl http://10.105.31.119; done
+
+##Perform the rolling update:##
+kubectl set image deployments/kubeserve app=linuxacademycontent/kubeserve:v2 --v 6
+
+##Describe a certain ReplicaSet:##
+kubectl describe replicasets kubeserve-[hash]
+
+##Apply the rolling update to version 3 (buggy):##
+kubectl set image deployment kubeserve app=linuxacademycontent/kubeserve:v3
+
+##Undo the rollout and roll back to the previous version:##
+kubectl rollout undo deployments kubeserve
+
+##Look at the rollout history:##
+kubectl rollout history deployment kubeserve
+
+##Roll back to a certain revision:##
+kubectl rollout undo deployment kubeserve --to-revision=2
+
+##Pause the rollout in the middle of a rolling update (canary release):##
+kubectl rollout pause deployment kubeserve
+
+##Resume the rollout after the rolling update looks good:##
+kubectl rollout resume deployment kubeserve
+
+##The YAML for a readiness probe:##
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubeserve
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kubeserve
+  minReadySeconds: 10
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      name: kubeserve
+      labels:
+        app: kubeserve
+    spec:
+      containers:
+      - image: linuxacademycontent/kubeserve:v3
+        name: app
+        readinessProbe:
+          periodSeconds: 1
+          httpGet:
+            path: /
+            port: 80
+
+##View the rollout status:##
+kubectl rollout status deployment kubeserve
+
+##Create a ConfigMap with two keys:##
+kubectl create configmap appconfig --from-literal=key1=value1 --from-literal=key2=value2
+
+##Get the YAML back out from the ConfigMap:##
+kubectl get configmap appconfig -o yaml
+
+##The YAML for the ConfigMap pod:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-pod
+spec:
+  containers:
+  - name: app-container
+    image: busybox:1.28
+    command: ['sh', '-c', "echo $(MY_VAR) && sleep 3600"]
+    env:
+    - name: MY_VAR
+      valueFrom:
+        configMapKeyRef:
+          name: appconfig
+          key: key1
+
+##Get the logs from the pod displaying the value:##
+kubectl apply -f configmap-pod.yaml
+
+##Get the logs from the pod displaying the value:##
+kubectl logs configmap-pod
+
+##The YAML for a pod that has a ConfigMap volume attached:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-volume-pod
+spec:
+  containers:
+  - name: app-container
+    image: busybox
+    command: ['sh', '-c', "echo $(MY_VAR) && sleep 3600"]
+    volumeMounts:
+      - name: configmapvolume
+        mountPath: /etc/config
+  volumes:
+    - name: configmapvolume
+      configMap:
+        name: appconfig
+
+##Get the keys from the volume on the container:##
+kubectl exec configmap-volume-pod -- ls /etc/config
+
+##Get the values from the volume on the pod:##
+kubectl exec configmap-volume-pod -- cat /etc/config/key1
+
+##The YAML for a secret:##
+apiVersion: v1
+kind: Secret
+metadata:
+  name: appsecret
+stringData:
+  cert: value
+  key: value
+
+##The YAML for a pod that will use the secret:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-pod
+spec:
+  containers:
+  - name: app-container
+    image: busybox
+    command: ['sh', '-c', "echo Hello, Kubernetes! && sleep 3600"]
+    env:
+    - name: MY_CERT
+      valueFrom:
+        secretKeyRef:
+          name: appsecret
+          key: cert
+
+##Open a shell and echo the environment variable:##
+kubectl exec -it secret-pod -- sh
+
+##The YAML for a ReplicaSet:##
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myreplicaset
+  labels:
+    app: app
+    tier: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+      - name: main
+        image: linuxacademycontent/kubeserve
+
+##Create the ReplicaSet:##
+kubectl apply -f replicaset.yaml
+
+##The YAML for a pod with the same label as a ReplicaSet:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+  labels:
+    tier: frontend
+spec:
+  containers:
+  - name: main
+    image: linuxacademycontent/kubeserve
+
+##Create the pod with the same label:##
+kubectl apply -f pod-replica.yaml
+
+##Watch the pod get terminated:##
+kubectl get pods -w 
+
+##The YAML for a StatefulSet:##
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+
+
+##View all StatefulSets in the cluster:##
+kubectl get statefulsets
+
+##Describe the StatefulSets:##
+kubectl describe statefulsets
