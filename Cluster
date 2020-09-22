@@ -1,0 +1,122 @@
+-->Cluster<--
+
+##Get the version of the API server:##
+kubectl version --short
+
+##View the version of kubelet:##
+kubectl describe nodes 
+
+##View the version of controller-manager pod:##
+kubectl get po [controller_pod_name] -o yaml -n kube-system
+
+##Release the hold on versions of kubeadm and kubelet:##
+sudo apt-mark unhold kubeadm kubelet
+
+##Install version 1.14.1 of kubeadm:##
+sudo apt install -y kubeadm=1.14.1-00
+
+##Hold the version of kubeadm at 1.14.1:##
+sudo apt-mark hold kubeadm
+
+##Verify the version of kubeadm:##
+kubeadm version
+
+##Plan the upgrade of all the controller components:##
+sudo kubeadm upgrade plan
+
+##Upgrade the controller components:##
+sudo kubeadm upgrade apply v1.14.1
+
+##Release the hold on the version of kubectl:##
+sudo apt-mark unhold kubectl
+
+##Upgrade kubectl:##
+sudo apt install -y kubectl=1.14.1-00
+
+##Hold the version of kubectl at 1.14.1:##
+sudo apt-mark hold kubectl
+
+#Upgrade the version of kubelet:##
+sudo apt install -y kubelet=1.14.1-00
+
+##Hold the version of kubelet at 1.14.1:##
+sudo apt-mark hold kubelet
+
+##See which pods are running on which nodes:##
+kubectl get pods -o wide
+
+##Evict the pods on a node:##
+kubectl drain [node_name] --ignore-daemonsets
+
+##Watch as the node changes status:##
+Watch as the node changes status:
+
+##Schedule pods to the node after maintenance is complete:##
+kubectl uncordon [node_name]
+
+##Remove a node from the cluster:##
+kubectl delete node [node_name]
+
+##Generate a new token:##
+sudo kubeadm token generate
+
+##List the tokens:##
+sudo kubeadm token list
+
+##Print the kubeadm join command to join a node to the cluster:##
+sudo kubeadm token create [token_name] --ttl 2h --print-join-command
+
+##Get the etcd binaries:##
+wget https://github.com/etcd-io/etcd/releases/download/v3.3.12/etcd-v3.3.12-linux-amd64.tar.gz
+
+##Unzip the compressed binaries:##
+tar xvf etcd-v3.3.12-linux-amd64.tar.gz
+
+##Move the files into /usr/local/bin:##
+sudo mv etcd-v3.3.12-linux-amd64/etcd* /usr/local/bin
+
+##Take a snapshot of the etcd datastore using etcdctl:##
+sudo ETCDCTL_API=3 etcdctl snapshot save snapshot.db --cacert /etc/kubernetes/pki/etcd/server.crt --cert /etc/kubernetes/pki/etcd/ca.crt --key /etc/kubernetes/pki/etcd/ca.key
+
+##View the help page for etcdctl:##
+ETCDCTL_API=3 etcdctl --help
+
+##Browse to the folder that contains the certificate files:##
+cd /etc/kubernetes/pki/etcd/
+
+##View that the snapshot was successful:##
+ETCDCTL_API=3 etcdctl --write-out=table snapshot status snapshot.db
+
+##Zip up the contents of the etcd directory:##
+sudo tar -zcvf etcd.tar.gz /etc/kubernetes/pki/etcd
+
+##Copy the etcd directory to another server:##
+scp etcd.tar.gz cloud_user@18.219.235.42:~/
+
+
+Update kubernetes version.
+
+    1  kubectl get pods
+    2  kubectl get nnodes
+    3  kubectl get nodes
+    4  export VERSION=v1.13.5
+    5  export ARCH=amd64
+    6  curl -sSL https://dl.k8s.io/release/${VERSION}/bin/linux/${ARCH}/kubeadm > kubeadm
+    7  sudo install -o root -g root -m 0755 ./kubeadm /usr/bin/kubeadm
+    8  sudo kubeadm version
+    9  sudo kubeadm upgrade plan
+   10  sudo kubeadm upgrade apply v1.13.5
+   11  kubectl get nodes
+   12  curl -sSL https://dl.k8s.io/release/${VERSION}/bin/linux/${ARCH}/kubelet > kubelet
+   13  sudo install -o root -g root -m 0755 ./kubelet /usr/bin/kubelet
+   14  sudo systemctl restart 
+   15  kubectl get nodes
+   16  curl -sSL https://dl.k8s.io/release/${VERSION}/bin/linux/${ARCH}/kubectl > kubectl
+   17  sudo install -o root -g root -m 0755 ./kubectl /usr/bin/kubectl
+   18  kubectl version
+Node:
+    1  export VERSION=v1.13.5
+    2  export ARCH=amd64
+    3  curl -sSL https://dl.k8s.io/release/${VERSION}/bin/linux/${ARCH}/kubelet > kubelet
+    4  sudo install -o root -g root -m 0755 ./kubelet /usr/bin/kubelet
+    5  sudo systemctl restart kubelet.service
