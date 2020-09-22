@@ -1,0 +1,658 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    name: myapp
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+    ports:
+      - containerPort: <Port>
+
+============
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    name: myapp
+spec:
+  containers:
+  - name: nginx-container
+    image: nginx
+
+
+-===
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+spec:
+  type: NodePort
+  ports:
+    - targetPort: 8080
+      port: 8080
+      nodePort: 30080
+  selector:
+    name: simple-webapp
+
+
+============
+kubectl run --generator=deployment/v1beta1 nginx --image=nginx
+kubectl create deployment --image=nginx nginx
+kubectl run --generator=run-pod/v1 nginx --image=nginx --dry-run -o yaml
+kubectl run --generator=deployment/v1beta1 nginx --image=nginx --dry-run -o yaml
+kubectl create deployment --image=nginx nginx --dry-run -o yaml
+kubectl run --generator=deployment/v1beta1 nginx --image=nginx --dry-run --replicas=4 -o yaml
+kubectl run --generator=deployment/v1beta1 nginx --image=nginx --dry-run --replicas=4 -o yaml > nginx-deployment.yaml
+kubectl expose pod redis --port=6379 --name redis-service --dry-run -o yaml
+kubectl create service clusterip redis --tcp=6379:6379 --dry-run -o yaml
+kubectl expose pod nginx --port=80 --name nginx-service --dry-run -o yaml
+kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run -o yaml
+kubectl expose deployment webapp --type=NodePort --port=8080 --name=webapp-service --dry-run -o yaml > webapp-service.yaml
+
+
+master $ cat nginx.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  -  image: nginx
+     name: nginx
+  nodeName: master
+
+
+
+kubectl get pods --selector env=dev
+
+master $ cat replicaset-definition-1.yaml
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: replicaset-1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+
+
+kubectl taint nodes node01 spray=mortein:NoSchedule(key=value:taint_effect)
+#key of 'spray', value of 'mortein' and effect of 'NoSchedule'
+master $ cat /var/answers/bee.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bee
+spec:
+  containers:
+  - image: nginx
+    name: bee
+  tolerations:
+  - key: spray
+    value: mortein
+    effect: NoSchedule
+    operator: Equalmaster
+
+kubectl taint node master node-role.kubernetes.io/master:NoSchedule-
+
+kubectl label node node01 size=large
+
+master $ cat  /var/answers/blue-deployment.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: blue
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      run: nginx
+  template:
+    metadata:
+      labels:
+        run: nginx
+    spec:
+      containers:
+      - image: nginx
+        imagePullPolicy: Always
+        name: nginx
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: color
+                operator: In
+                values:
+                - blue
+
+kubectl edit deployment my-deployment
+kubectl get pod webapp -o yaml > my-new-pod.yaml
+
+kubectl get daemonsets --all-namespaces
+kubectl describe daemonset weave-net --namespace=kube-system
+kubectl get daemonset weave-net --namespace=kube-system -o yaml
+kubectl run --restart=Never --image=busybox static-busybox --dry-run -o yaml --command -- sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml
+kubectl get nodes -o wide
+/var/lib/kubelet/config.yaml on node01
+
+
+master $ cat /root/nginx-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  -  image: nginx
+     name: nginx
+  schedulerName: my-scheduler
+master $
+
+
+    - --leader-elect=false
+    - --port=10282
+    - --scheduler-name=my-scheduler
+
+kubectl logs -f webapp-2 simple-webapp
+kubectl edit deployment frontend
+
+master $ cat webapp-config-map.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webapp-config-map
+data:
+  APP_COLOR: darkblue
+master $
+
+master $ cat /var/answers/webapp-color-with-configmap.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    name: webapp-color
+  name: webapp-color
+  selfLink: /api/v1/namespaces/default/pods/webapp-color
+spec:
+  containers:
+  - envFrom:
+    - configMapRef:
+        name: webapp-config-map
+    image: kodekloud/webapp-color
+    imagePullPolicy: Always
+    name: webapp-colormaster $
+master $
+
+echo -n 'test'| base64
+
+echo -n 'test'| base64 --decode
+
+kubectl get secret app-secret -o yaml
+
+kubectl create secret generic db-secret --from-literal=DB_Host=sql01 --from-literal=DB_User=root --from-literal=DB_Password=password123
+
+kubectl exec -it app cat /log/app.log
+
+master $ cat /var/answers/answer-app.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+  namespace: elastic-stack
+  labels:
+    name: app
+spec:
+  containers:
+  - name: app
+    image: kodekloud/event-simulator
+    volumeMounts:
+    - mountPath: /log
+      name: log-volume
+
+  - name: sidecar
+    image: kodekloud/filebeat-configured
+    volumeMounts:
+    - mountPath: /var/log/event-simulator/
+      name: log-volume
+
+  volumes:
+  - name: log-volume
+    hostPath:
+      # directory location on host
+      path: /var/log/webapp
+      # this field is optional
+      type: DirectoryOrCreatemaster $
+
+
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: myapp-pod
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp-container
+        image: busybox:1.28
+        command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+      initContainers:
+      - name: init-myservice
+        image: busybox
+        command: ['sh', '-c', 'git clone <some-repository-that-will-be-used-by-application> ; done;']
+
+
+init container is run one at a time in sequential order
+
+kubectl drain node01 --ignore-daemonsets
+kubectl uncordon node01
+kubectl cordon node01
+
+kubeadm upgrade plan
+kubectl drain master --ignore-daemonsets
+apt-get upgrade kubelet
+apt install kubeadm=1.12.0-00
+kubeadm upgrade apply v1.12.0
+apt install kubelet=1.12.0-00
+systemctl restart kubelet
+kubectl uncordon master
+
+kubectl drain node01 --ignore-daemonsets --force
+apt install kubeadm=1.12.0-00
+apt install kubelet=1.12.0-00
+kubeadm upgrade node config --kubelet-version $(kubelet --version | cut -d ' ' -f 2)
+kubeadm upgrade apply v1.12.0
+kubectl uncordon node
+
+kubectl logs etcd-master -n kube-system 
+kubectl describe pod etcd-master -n kube-system
+etcdctl snapshot save snapshot.db
+
+kubectl config view
+kubectl config view --kubeconfig my-kube-config
+
+
+kubectl describe rolebinding weave-net -n kube-system
+kubectl describe role weave-net -n kube-system
+kubectl describe pods weave-net -n kube-system
+kubectl get pods --as dev-user
+kubectl get clusterrolebindings --no-headers | wc -l
+kubectl get clusterroles --no-headers | wc -l
+
+master $ cat /var/answers/michelle-storage-admin.yaml
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: storage-admin
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: michelle-storage-admin
+subjects:
+- kind: User
+  name: michelle
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: storage-admin
+  apiGroup: rbac.authorization.k8s.io
+
+
+
+master $ cat /var/answers/michelle-node-admin.yaml
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: node-admin
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: michelle-binding
+subjects:
+- kind: User
+  name: michelle
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: node-admin
+  apiGroup: rbac.authorization.k8s.io
+
+kubectl create secret docker-registry private-reg-cred --docker-username=dock_user --docker-password=dock_password --docker-server=myprivateregistry.com:5000 --docker-email=dock_user@myprivateregistry.com
+
+kubectl exec ubuntu-sleeper whoami
+kubectl get networkpolicies
+
+
+master $ cat /var/answers/answer-internal-policy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: internal-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      name: internal
+  policyTypes:
+  - Egress
+  - Ingress
+  ingress:
+    - {}
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          name: mysql
+    ports:
+    - protocol: TCP
+      port: 3306
+
+  - to:
+    - podSelector:
+        matchLabels:
+          name: payroll
+    ports:
+    - protocol: TCP
+      port: 8080
+master $
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webapp
+spec:
+  containers:
+  - name: event-simulator
+    image: kodekloud/event-simulator
+    env:
+    - name: LOG_HANDLERS
+      value: file
+    volumeMounts:
+    - mountPath: /log
+      name: log-volume
+
+  volumes:
+  - name: log-volume
+    hostPath:
+      # directory location on host
+      path: /var/log/webapp
+      # this field is optional
+      type: Directory
+
+
+
+master $ cat /var/answers/claim-log-1-new.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: claim-log-1
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Mi
+
+master $ cat  /var/answers/webapp-pod-pvc.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webapp
+spec:
+  containers:
+  - name: event-simulator
+    image: kodekloud/event-simulator
+    env:
+    - name: LOG_HANDLERS
+      value: file
+    volumeMounts:
+    - mountPath: /log
+      name: log-volume
+
+  volumes:
+  - name: log-volume
+    persistentVolumeClaim:
+      claimName: claim-log-1
+
+
+kubectl get pvc
+kubectl delete pvc claim-log-1
+kubectl get pv
+
+ip link
+ip addr
+ip addr add 192.168.1.10/24 dev eth0
+route
+ip route add 192.168.1.0/24 via 192.168.2.1
+cat /proc/sys/net/ipv4/ip_forward
+
+ip netns add red
+ip netns
+ip netns exec red ip link
+ip -n red link
+arp 
+ip link add veth-red type veth peer name veth-blue
+ip link set veth-red netns red
+ip link set veth-blue netns blue
+ip -n red addr add 192.168.15.1 dev veth-red
+ip -n blue addr add 192.168.15.2 dev veth-blue
+
+ip -n red link set veth-red up 
+ip -n blue link set veth-blue up 
+ip netns exec red ping 192.168.15.2
+ip netns exec red arp
+ip -n red link del veth-red
+
+ip link add v-net-0 type bridge
+ip link set dev v-net-0 up
+ip link add veth-red type veth peer name veth-red-br
+ip link add veth-blue type veth peer name veth-blue-br
+ip link set veth-red netns red
+ip link set veth-red-br master v-net-0
+ip link set veth-blue netns blue
+ip link set veth-blue-br master v-net-0
+ip -n red addr add 192.168.15.1 dev veth-red
+ip -n blue addr add 192.168.15.2 dev veth-blue
+ip -n red link set veth-red up 
+ip -n blue link set veth-blue up 
+
+ip addr add 192.168.15.5/24 dev v-net-0
+ip netns exec blue ip route add 192.168.1.0/24 via 192.168.5.15
+iptables -t nat -A POSTROUTING -s 192.168.15.0/24 -j MASQUERADE
+
+bridge add <cid> <Namespace>
+
+netstat -plnt
+netstat -anp | grep etcd
+
+ls /etc/cni/net.d/
+
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+ps -aux | grep kube-api
+kubectl log weave-net-d2fsh weave -n kube-system
+kubectl logs kube-proxy- -n kube-system
+
+kubectl get configmap -n kube-system
+kubectl get service -n kube-system
+kubectl describe configmap coredns -n kube-system 
+kubectl get all --all-namespaces
+kubectl get ingress --all-namespaces
+kubectl describe ingress --namespace app-space
+kubectl edit ingress --namespace app-space
+
+
+master $ cat /var/answers/ingress-pay.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-ingress
+  namespace: critical-space
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /pay
+        backend:
+          serviceName: pay-service
+          servicePort: 8282
+
+kubectl create namespace ingress-space
+kubectl create configmap nginx-configuration --namespace ingress-space
+kubectl create serviceaccount ingress-serviceaccount --namespace ingress-space
+master $ cat /var/answers/ingress-service.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress
+  namespace: ingress-space
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    nodePort: 30080
+    name: http
+  - port: 443
+    targetPort: 443
+    protocol: TCP
+    name: https
+  selector:
+    name: nginx-ingress
+
+master $ cat /var/answers/bootstrap-token-05832d.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  # Name MUST be of form "bootstrap-token-<token id>"
+  name: bootstrap-token-05832d
+  namespace: kube-system
+
+# Type MUST be 'bootstrap.kubernetes.io/token'
+type: bootstrap.kubernetes.io/token
+stringData:
+  # Human readable description. Optional.
+  description: "The default bootstrap token generated by 'kubeadm init'."
+
+  # Token ID and secret. Required.
+  token-id: 05832d
+  token-secret: x262bbbe835dx21k
+
+  # Expiration. Optional.
+  expiration: 2020-03-10T03:22:11Z
+
+  # Allowed usages.
+  usage-bootstrap-authentication: "true"
+  usage-bootstrap-signing: "true"
+
+  # Extra groups to authenticate the token as. Must start with "system:bootstrappers:"
+  auth-extra-groups: system:bootstrappers:node03
+
+kubectl create clusterrolebinding crb-bootstrappers --clusterrole=system:node-bootstrapper --group=system:bootstrappers
+
+master $ cat /var/answers/bootstrap-kubeconfig.yaml
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /etc/kubernetes/pki/ca.crt
+    server: https://172.17.0.8:6443
+  name: bootstrap
+contexts:
+- context:
+    cluster: bootstrap
+    user: kubelet-bootstrap
+  name: bootstrap
+current-context: bootstrap
+kind: Config
+preferences: {}
+users:
+- name: kubelet-bootstrap
+  user:
+    token: 05832d.x262bbbe835dx21k
+
+kubectl get endpoint -n gamma
+
+kubectl scale deploy app --replicas=2
+journalctl -u kubelet
+
+
+
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUN5RENDQWJDZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRFNU1URXhPREUwTURJd09Wb1hEVEk1TVRFeE5URTBNREl3T1Zvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTkw2CnhnSXlrUWNhdHNjQ1A4dXVFNFliOUhTbFI3TDZkcWdWR01JMWhyNlFoN3EvUDExWG83QXkybTg2V0hnWTNrQjIKUmRacHdCbENRM3JUR3JMSkNxM2tTMGoyWjV5dXJYd0pZNDNOVzkxTUZvaDZvR1IyZEdvN2Y0bWMxNEJnODlKSwpKM0ZNM3cwNmpWRDVpZzBIdEtHV2txRlZwTTYvQVRIMDF2MFl5SllIbWZiVVdCTWFmZ25PbGZ1TUJiRmRzMUdOCldvd095V1hGcWR0Q2ExWE01RXN6ZVBMZ2FNWnY3U0FxK091TXJMRVVTL3hWZTh5c1k4QjREbkt3UFZMVjlDSlMKVWpZeU01SnphS0pzT0JFUWJKZnZhL1dPVTZ5Q3FPMThlaWNqRFhiTjZTb2RVOC96U09Dd1RCdnVmR2JwN2xodgo4S0Iyb1BTWUVLcklSSTBXT0JjQ0F3RUFBYU1qTUNFd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFDNUN2ZHlVclBnQkR0RmJna2lkOVZHVUttU3gKc2hVVzZGbURrSndWeTJic3lDK01wMXE5d09xRnNMUC9MWW5kazV3YzBiR3kzNXhBL3YrQjk5cXVCMGczbGE0TQpMZlZ6L0FDN04wQXFabTVabWNhcE40dUIyclo5SnJBS1FmNmUyVlRpREFxZmZ6VGd6NzFJbVdQemw2VXRDWmhECktZcno3MDZibUFQc2NGRjlyZGw0UzNuM29RWVpITEMzKzc0ZWFlWGpPalFCQzJIVGZCYTBpY3JLc1FTdWNlejQKT1ZPSzQ2dmFhSnhwZGVRTGIrVnZHRWdpUGhhZk1XTTYyVGZoN0g4Zzh4RlBrZmJYWWdmOU5vVG1aaU9tbUdqRQpQM3QxTjNoNkRFMTZXMXIvay9MMjRRdU5TQUlmVzhJUE9nQkZtOFVySVEyM1VmQVQ4dGpzV29ZSk5nST0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    server: https://172.17.0.85:6443
+  name: default-cluster
+contexts:
+- context:
+    cluster: default-cluster
+    namespace: default
+    user: default-auth
+  name: default-context
+current-context: default-context
+kind: Config
+preferences: {}
+users:
+- name: default-auth
+  user:
+    client-certificate: /var/lib/kubelet/pki/kubelet-client-current.pem
+    client-key: /var/lib/kubelet/pki/kubelet-client-current.pem
+
+
+kubectl get nodes -o json > /opt/outputs/nodes.json
+
+kubectl get node node01 -o json > /opt/outputs/node01.json
+kubectl get nodes -o=jsonpath='{.items[*].metadata.name}' > /opt/outputs/node_names.txt
+kubectl get nodes -o jsonpath='{.items[*].status.nodeInfo.osImage}' > /opt/outputs/nodes_os.txt
+kubectl config view --kubeconfig=my-kube-config -o jsonpath="{.users[*].name}"
+kubectl get pv --sort-by=.spec.capacity.storage > /opt/outputs/storage-capacity-sorted.txt
+kubectl get pv --sort-by=.spec.capacity.storage -o=custom-columns=NAME:.metadata.name,CAPACITY:.spec.capacity.storage > /opt/outputs/pv-and-capacity-sorted.txt
+kubectl config view --kubeconfig=my-kube-config -o jsonpath="{.contexts[?(@.context.user=='aws-user')].name}" > /opt/outputs/aws-context-name
+
+kubectl get pods --all-namespaces -o wide --show-labels
+kubectl cluster-info
+kubectl config view
+
+kubectl get nodes -o json|jq .'items[]|select(.spec.taints == null)|select(.status.conditions[].type=="Ready")|.metadata.name'
