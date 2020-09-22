@@ -1,0 +1,577 @@
+##Get the JSON output of your service:##
+kubectl get svc hostnames -o json
+
+##View the endpoints for your service:##
+kubectl get ep
+
+##Communicate with the pod directly (without the service):##
+wget -qO- 10.244.1.6:9376
+
+##Check if kube-proxy is running on the nodes:##
+ps auxw | grep kube-proxy
+
+##Check if kube-proxy is writing iptables:##
+iptables-save | grep hostnames
+
+##Connect to your kube-proxy pod in the kube-system namespace:##
+kubectl exec -it kube-proxy-cqptg -n kube-system -- sh
+
+##Delete the flannel CNI plugin:##
+kubectl delete -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
+
+##Apply the Weave Net CNI plugin:##
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+##Start busybox pod##
+kubectl run busybox --image=busybox --rm -it --restart=Never -- sh
+
+##Use the following command to access the pod directly via its container port:##
+wget -qO- <pod_ip_address>:80
+
+
+kubectl create deployment hr-web-app --image=kodekloud/webapp-color
+kubectl scale deployment/hr-web-app --replicas=2
+
+kubectl run --restart=Never --image=busybox static-busybox --dry-run -o yaml --command -- sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml
+
+kubectl expose deployment hr-web-app --type=NodePort --port=8080 --name=hr-web-app-service --dry-run -o yaml > hr-web-app-service.yaml to generate a service definition file. 
+Then edit the nodeport in it and create a service.
+
+kubectl create service clusterip redis --tcp=6379:6379 --dry-run -o yaml
+
+kubectl expose pod messaging --port=6379 --name messaging-service
+kubectl get nodes -o jsonpath='{.items[*].status.nodeInfo.osImage}'
+
+kubectl create -f rolling.yaml --record
+kubectl set image deployments/kubeserve app=linuxacademycontent/kubeserve:v2 --v 6
+kubectl rollout history deployment nginx-deploy
+
+
+kubectl api-version |grep certificate
+kubectl get csr 
+managing tls 
+kubectl certificate approve john-developer
+kubectl create role developer --resource=pods --verb=list,create,get,update,delete --namespace=development
+kubectl describe role developer -n development
+kubectl create rolebinding developer-role-binding --role=developer --user=john --namespace=development
+kubectl -n development describe rolebindings.rbac.authorization.k8.io developer-role-binding
+kubectl auth can-i update pods --namespace-development --as=john
+
+
+kubectl expose pod  nginx-resolver --name=nginx-resolver-service --port=80 --target-port=80 --type=ClusterIP
+
+kubectl run --generator=run-pod/v1  test-nslookup --image=busybox:1.28 --rm -it --  nslookup nginx-resolver-service
+kubectl run --generator=run-pod/v1  test-nslookup --image=busybox:1.28 --rm -it --  nslookup <ip-address-of-pod.default.pod>
+
+
+kubectl run redis-storage --image=redis:alpine --generator=run-pod/v1 --dry-run -o yaml > empty.yaml
+ETCDCTL_API=3 etcdctl --endpoints=https://[127.0.0.1]:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt --key=/etc/kubernetes/pki/etcd/healthcheck-client.key  snapshot save /tmp/etcd-backup.db
+ETCDCTL_API=3 etcdctl --endpoints=https://[127.0.0.1]:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/healthcheck-client.crt --key=/etc/kubernetes/pki/etcd/healthcheck-client.key  snapshot status /tmp/etcd-backup.db
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myvolumes-pod
+spec:
+  containers:
+  - image: alpine
+    imagePullPolicy: IfNotPresent
+    name: myvolumes-container
+    
+    command: [    'sh', '-c', 'echo The Bench Container 1 is Running ; sleep 3600']
+    
+    volumeMounts:
+    - mountPath: /demo
+      name: demo-volume
+  volumes:
+  - name: demo-volume
+    emptyDir: {}
+
+
+kubectl create serviceaccount pvviewer
+
+kubectl create clusterrole pvviewer-role --resource==persistentvolumes --verb=list 
+kubectl create clusterrolebin  pvviewer-role-binding --clusterrole=pvviewer-role --serviceaccount=default:pvviewer
+
+nc -z -v -w 2 np-test-servie 80
+kubectl get netpol
+kubectl describe netpol default-deny 
+kubectl apiVersion|grep network
+kubectl run --generator=run-pod/v1 hr-pod --image=redis:alpine --labels=environment=production,tier=frontend --namespace=hr
+
+cd .config/
+kubectl cluster-info --kubeconfig=/root/super.kubeconfig
+sed -i 's/name/name/g' file name
+
+kubectl run busybox --image=busybox --rm -it --restart=Never -- sh
+
+kubectl run data-pod --image=busybox --restart=Never -o yaml --dry-run -- /bin/sh -c 'sleep 3600' > data-pod.yaml
+kubectl exec -it data-pod -n web -- sh
+
+kubectl create deployment webfront-deploy  --image=nginx:1.7.8  --dry-run -o yaml > webfront-deploy.yaml
+
+Add container port 80, to have your final YAML look like this:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: webfront-deploy
+  name: webfront-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webfront-deploy
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: webfront-deploy
+    spec:
+      containers:
+      - image: nginx:1.7.8
+        name: nginx
+        ports:
+        - containerPort: 80
+        resources: {}
+status: {}
+
+kubectl expose deployment/webfront-deploy --port=80 --target-port=80 --type=NodePort --dry-run -o yaml > webfront-service.yaml
+
+add nodePort and change name 
+
+kubectl run busybox --rm -it --image=busybox /bin/sh
+
+# wget -O- [pod_ip_address]:80
+# wget --spider --timeout=1 webfront-service
+
+kubectl run db-redis --image=redis --restart=Never
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+kubectl apply -f default-deny.yaml
+
+kubectl run busybox --rm -it --image=busybox /bin/sh
+# wget -O- [pod_ip_address]:80
+
+kubectl get po
+kubectl label po <pod_name> role=frontend
+kubectl label po db-redis role=db
+kubectl get po --show-labels
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-netpolicy
+spec:
+  podSelector:
+    matchLabels:
+      role: db
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: frontend
+    ports:
+    - port: 6379
+
+kubectl apply -f redis-netpolicy.yaml
+
+kubectl get netpol --> to view network policy
+kubectl describe netpol redis-netpolicy
+kubectl get po --show-labels
+
+kubectl taint node <node_name> node-type=prod:NoSchedule
+
+kubectl port-forward $POD_NAME 8081:80
+curl --head http://127.0.0.1:8081
+
+wavenet:
+sudo sysctl net.ipv4.conf.all.forwarding=1
+echo "net.ipv4.conf.all.forwarding=1" | sudo tee -a /etc/sysctl.conf
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')&env.IPALLOC_RANGE=10.200.0.0/16"
+kubectl get pods -n kube-system
+
+kubectl label nodes <node-name> <label-key>=<label-value>
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myvolumes-pod
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: workdir
+      mountPath: /usr/share/nginx/html
+  initContainers:
+  - name: install
+    image: busybox
+    command:
+    - wget
+    - "-o"
+    - "/work-dir/index.html"
+    - http://kuberenetes.io  
+    volumeMounts:
+    - mountPath: "/work-dir"
+      name: workdir
+  volumes:
+  - name: workdir
+    emptyDir: {}
+
+kubectl delete rc nginx --cascade=false
+
+===============================
+cat > drupal-mysql-pv.yaml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: drupal-mysql-pv
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /drupal-mysql-data
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: drupal-pv
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /drupal-data
+===
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drupal
+  name: drupal
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: drupal
+    spec:
+      InitContainers:
+      - image: drupal:8.6
+        name: init-sites-volume
+        command: ['/bin/bash', '-c']
+        args: ['cp -r ']
+        volumeMounts:
+        - mountPath: /data
+          name: vol-drupal
+      containers:
+      - image: drupal:8.6
+        name: drupal
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /var/www/html/modules
+          name: vol-drupal
+          subPath: modules
+        - mountPath: /var/www/html/profiles
+          name: vol-drupal
+          subPath: profiles
+        - mountPath: /var/www/html/sites
+          name: vol-drupal
+          subPath: sites
+        - mountPath: /var/www/html/themes
+          name: vol-drupal
+          subPath: themes
+      volumes:
+      - name: vol-drupal
+        PersistentVolumeClaim:
+          claimName: drupal-pv
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+   name: drupal-service
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    nodePort: 30095
+  selector:
+    app: drupal
+  NodePort: NodePort
+
+
+======================
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: fs
+  name: gop-fileserver
+spec:
+  containers:
+  - image: kodekloud/fileserver
+    name: fs
+    volumeMounts:
+    - mountPath: "/web"
+      name: data-store
+  volumes:
+  - name: data-store
+    persistentVolumeClaim
+      claimName: data-pvc
+ 
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+   labels:
+    app: fs
+  name: gop-fs-service
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 30095
+  selector:
+    app: drupal
+  type: NodePort
+
+
+============================
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis01
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /redis01
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis02
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /redis02
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis03
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /redis03
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis04
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /redis04
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis05
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /redis05
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis06
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: /redis06
+
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+spec:
+  serviceName: redis-cluster
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis-cluster
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+    spec:
+      containers:
+      - name: redis
+        image:
+        ports:
+        - containerPort: 8008
+          name: client
+        - containerPort: 8008
+          name: gossip
+        commad: ['']
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: conf
+          mountPath: /conf
+          readonly: 
+        - name: data
+          mountPath: /data
+          readonly:
+      volumes:
+      - name: conf
+        configMap:
+          name: 
+          defaultMode:
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: client
+  - port: 8080
+    targetPort: 8080
+    name: gossip
+  selector:
+    app: redis-cluster
+
+
+kubectl exec -it redis-cluster-0 -- redis-cli --cluster create --cluster-replicas 1 ${kubectl get pods -l app=redis-cluster -o jsonpath= '{range.items[*]}{.status.podIP}:6379'}
+kubectl exec -it redis-cluster-0 -- redis-cli cluster info
+
+=====================================
+
+kubectl create role developer-role --resource=pods,svc,pvc --verb="*" --namespace=development
+kubectl create rolebinding developer-rolebinding --role=developer-role --user=drogo --namespace=development
+
+kubectl config set-credentials drogo --client-certificate=/root/drogo.crt --client-key=/root/drogo.key
+kubectl config set-context developer --cluster=kuberenetes --user=drogo
+kubectl config use-context developer
+kubectl get pv
+kubectl config use-context kuberenetes-admin@kuberenetes
+kubectl config use-context developer
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jekyll-sites
+  namespace: development
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  capacity:
+    storage: "5Gi"
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: jekyll
+  name: jekyll
+spec:
+  InitContainers:
+  - image: kodekloud/jekyll
+    name: copy-jekyll-sites
+    command: ['jekyll', '']
+    volumeMounts:
+    - mountPath: /site
+      name: site
+  containers:
+  - image: kodekloud/jekyll-serve
+    name: jekyll
+    volumeMounts:
+    - mountPath: /site
+      name: site
+  volumes:
+  - name: site
+    persistentVolumeClaim
+      claimName: jekyll-sites
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: jekyll
+  name: jekyll
+  namespace: development
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 30092
+  selector:
+    run: jekyll
+
+
+
+
