@@ -1,0 +1,366 @@
+-->Storage<---
+
+##In the Google Cloud Engine, find the region your cluster is in:##
+gcloud container clusters list
+
+##Using Google Cloud, create a persistent disk in the same region as your cluster:##
+gcloud compute disks create --size=1GiB --zone=us-central1-a mongodb
+
+##The YAML for a pod that will use persistent disk:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mongodb 
+spec:
+  volumes:
+  - name: mongodb-data
+    gcePersistentDisk:
+      pdName: mongodb
+      fsType: ext4
+  containers:
+  - image: mongo
+    name: mongodb
+    volumeMounts:
+    - name: mongodb-data
+      mountPath: /data/db
+    ports:
+    - containerPort: 27017
+      protocol: TCP
+
+##Create the pod with disk attached and mounted:##
+kubectl apply -f mongodb-pod.yaml
+
+##Connect to the mongodb shell:##
+kubectl exec -it mongodb mongo
+
+##Switch to the mystore database in the mongodb shell:##
+use mystore
+
+##Create a JSON document to insert into the database:##
+db.foo.insert({name:'foo'})
+
+##View the document you just created:##
+db.foo.find()
+
+##Drain the node (if the pod is on the same node as before):##
+kubectl drain [node_name] --ignore-daemonsets
+
+##The YAML for a PersistentVolume object in Kubernetes:##
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongodb-pv
+spec:
+  capacity: 
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  gcePersistentDisk:
+    pdName: mongodb
+    fsType: ext4
+
+##View our Persistent Volumes:##
+kubectl get persistentvolumes
+
+##The YAML for a Persistent Volume:##
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongodb-pv
+spec:
+  capacity: 
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  gcePersistentDisk:
+    pdName: mongodb
+    fsType: ext4
+
+##View the Persistent Volumes in your cluster:##
+kubectl get pv
+
+##The YAML for a PVC:##
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc 
+spec:
+  resources:
+    requests:
+      storage: 1Gi
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: ""
+
+##Create a PVC:##
+kubectl apply -f mongodb-pvc.yaml
+
+##View the PVC in the cluster:##
+kubectl get pvc
+
+##View the PV to ensure it’s bound:##
+kubectl get pv
+
+##The YAML for a pod that uses a PVC:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mongodb 
+spec:
+  containers:
+  - image: mongo
+    name: mongodb
+    volumeMounts:
+    - name: mongodb-data
+      mountPath: /data/db
+    ports:
+    - containerPort: 27017
+      protocol: TCP
+  volumes:
+  - name: mongodb-data
+    persistentVolumeClaim:
+      claimName: mongodb-pvc
+
+##Create the pod with the attached storage:##
+kubectl apply -f mongo-pvc-pod.yaml
+
+##Access the mogodb shell:##
+kubectl exec -it mongodb mongo
+
+##Find the JSON document created in previous lessons:##
+db.foo.find()
+
+##Delete the mongodb pod:##
+kubectl delete pod mogodb
+
+##Delete the mongodb-pvc PVC:##
+kubectl delete pvc mongodb-pvc
+
+##Check the status of the PV:##
+kubectl get pv
+
+##The YAML for the PV to show its reclaim policy:##
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mongodb-pv
+spec:
+  capacity: 
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+    - ReadOnlyMany
+  persistentVolumeReclaimPolicy: Retain
+  gcePersistentDisk:
+    pdName: mongodb
+    fsType: ext4
+
+##See the PV protection on your volume:##
+kubectl describe pv mongodb-pv
+
+##See the PVC protection for your claim:##
+kubectl describe pvc mongodb-pvc
+
+##See that the PVC is terminated, but the volume is still attached to pod:##
+kubectl get pvc
+
+##Try to access the data, even though we just deleted the PVC:##
+kubectl exec -it mongodb mongo
+use mystore
+db.foo.find()
+
+##YAML for a StorageClass object:##
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+
+##Create the StorageClass type "fast":##
+kubectl apply -f sc-fast.yaml
+
+##Change the PVC to include the new StorageClass object:##
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc 
+spec:
+  storageClassName: fast
+  resources:
+    requests:
+      storage: 100Mi
+  accessModes:
+    - ReadWriteOnce
+
+##Create the PVC with automatically provisioned storage:##
+kubectl apply -f mongodb-pvc.yaml
+
+##The YAML for a hostPath PV:##
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-hostpath
+spec:
+  storageClassName: local-storage
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+
+##The YAML for a pod with an empty directory volume:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydir-pod
+spec:
+  containers:
+  - image: busybox
+    name: busybox
+    command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+    volumeMounts:
+    - mountPath: /tmp/storage
+      name: vol
+  volumes:
+  - name: vol
+    emptyDir: {}
+
+##The YAML for our StorageClass object:##
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+
+##The YAML for our PVC:##
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kubeserve-pvc 
+spec:
+  storageClassName: fast
+  resources:
+    requests:
+      storage: 100Mi
+  accessModes:
+    - ReadWriteOnce
+
+##View the StorageClass objects in your cluster:##
+kubectl get sc
+
+##Connect to our pod and create a file on the PV:##
+kubectl exec -it [pod-name] -- touch /data/file1.txt
+
+##Connect to our pod and list the contents of the /data directory:##
+kubectl exec -it [pod-name] -- ls /data
+
+##Use the following YAML spec for the PersistentVolume named redis-pv.yaml:##
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+
+##Then, create the PersistentVolume:##
+kubectl apply -f redis-pv.yaml
+
+##Use the following YAML spec for the PersistentVolumeClaim named redis-pvc.yaml:##
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redisdb-pvc
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+##Then, create the PersistentVolumeClaim:##
+kubectl apply -f redis-pvc.yaml
+
+##Use the following YAML spec for the pod named redispod.yaml:##
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redispod
+spec:
+  containers:
+  - image: redis
+    name: redisdb
+    volumeMounts:
+    - name: redis-data
+      mountPath: /data
+    ports:
+    - containerPort: 6379
+      protocol: TCP
+  volumes:
+  - name: redis-data
+    persistentVolumeClaim:
+      claimName: redisdb-pvc
+
+##Then, create the pod:##
+kubectl apply -f redispod.yaml
+
+##Verify the pod was created:##
+kubectl get pods
+
+##Connect to the container and run the redis-cli:##
+kubectl exec -it redispod redis-cli
+
+##Set the key space server:name and value "redis server":##
+SET server:name "redis server"
+
+##Run the GET command to verify the value was set:##
+GET server:name
+
+##Exit the redis-cli:##
+quirt
+
+##Delete the existing redispod:##
+kubectl delete pod redispod
+
+##Open the file redispod.yaml and change line 4 from name: redispod to:##
+name: redispod2
+
+##Create a new pod named redispod2:##
+kubectl apply -f redispod.yaml
+
+##Connect to the container and run redis-cli:##
+kubectl exec -it redispod2 redis-cli
+
+##Run the GET command to retrieve the data written previously:##
+GET server:name
+
+##Exit the redis-cli:##
+QUIT
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
